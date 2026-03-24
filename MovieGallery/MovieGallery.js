@@ -28,14 +28,25 @@
                 top: 0; left: 0;
                 width: 100%; height: 100%;
                 opacity: 0;
+                
+                /* THE FIX: Ignore clicks on invisible slides */
+                pointer-events: none; 
+                z-index: 1;
+                
                 transition: opacity 1.2s ease-in-out;
                 background-size: cover;
                 background-position: center 20%;
                 display: flex;
                 align-items: flex-end;
-                cursor: pointer; /* Makes it obvious the slide is clickable */
+                cursor: pointer;
             }
-            .jf-slide.active { opacity: 1; }
+            .jf-slide.active { 
+                opacity: 1; 
+                
+                /* THE FIX: Re-enable clicks for the visible slide */
+                pointer-events: auto; 
+                z-index: 10;
+            }
             .jf-slide-overlay {
                 width: 100%;
                 padding: 80px 40px 30px;
@@ -44,7 +55,7 @@
                 transition: padding-bottom 0.3s ease;
             }
             .jf-slide:hover .jf-slide-overlay {
-                padding-bottom: 40px; /* Slight hover effect */
+                padding-bottom: 40px;
             }
             .jf-slide-title { font-size: 2.8em; font-weight: 700; margin: 0 0 10px 0; text-shadow: 2px 2px 5px rgba(0,0,0,0.8); }
             .jf-slide-meta { font-size: 1.2em; color: #ddd; font-weight: 600; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); }
@@ -127,7 +138,6 @@
 
     async function triggerBuild(insertTarget) {
         if (isFetching || document.getElementById(SLIDESHOW_ID)) return;
-        
         if (typeof ApiClient === 'undefined' || !ApiClient.getCurrentUserId()) return;
 
         isFetching = true;
