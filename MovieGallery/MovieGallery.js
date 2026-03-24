@@ -1,6 +1,7 @@
 (function () {
     'use strict';
 
+    var galleryTimeout = parseInt("{{GALLERY_TIMEOUT}}") || 6000;
     const STYLE_ID = 'jf-slideshow-styles';
     const SLIDESHOW_ID = 'jf-custom-slideshow';
     
@@ -133,7 +134,7 @@
             slides[currentIdx].classList.remove('active');
             currentIdx = (currentIdx + 1) % slides.length;
             slides[currentIdx].classList.add('active');
-        }, 6000);
+        }, galleryTimeout);
     }
 
     async function triggerBuild(insertTarget) {
