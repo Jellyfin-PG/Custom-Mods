@@ -1,13 +1,21 @@
 (function () {
-    const injectCSS = () => {
-        if (document.getElementById('custom-slideshow-style')) return;
+    'use strict';
+
+    const STYLE_ID = 'jf-slideshow-styles';
+    const SLIDESHOW_ID = 'jf-custom-slideshow';
+    
+    let isFetching = false;
+    let slideshowInterval = null;
+
+    function injectCSS() {
+        if (document.getElementById(STYLE_ID)) return;
         
         const style = document.createElement('style');
-        style.id = 'custom-slideshow-style';
+        style.id = STYLE_ID;
         style.textContent = `
-            .jf-custom-slideshow {
+            #${SLIDESHOW_ID} {
                 position: relative;
-                width: calc(100% - 4%); /* Aligns with Jellyfin 10.11 padding */
+                width: calc(100% - 4%);
                 margin: 1em 2%;
                 height: 450px;
                 border-radius: var(--rounding-lg, 12px);
@@ -38,15 +46,12 @@
             .jf-rating { color: #facc15; margin-right: 15px; }
         `;
         document.head.appendChild(style);
-    };
+    }
 
-    const fetchRecommendedMovies = async () => {
-        if (typeof ApiClient === 'undefined') {
-            console.warn("ApiClient not ready.");
-            return [];
-        }
-
+    async function fetchRecommendedMovies() {
+        if (typeof ApiClient === 'undefined') return [];
         const userId = ApiClient.getCurrentUserId();
+        if (!userId) return [];
         
         try {
             const response = await ApiClient.getJSON(ApiClient.getUrl(`Users/${userId}/Items`, {
@@ -60,26 +65,17 @@
             }));
             return response.Items || [];
         } catch (err) {
-            console.error("Error fetching slideshow items:", err);
+            console.error("Slideshow: Error fetching items:", err);
             return [];
         }
-    };
+    }
 
-    const renderSlideshow = (items) => {
+    function renderSlideshow(items, insertTarget) {
+        if (document.getElementById(SLIDESHOW_ID)) return;
         if (!items || items.length === 0) return;
-        if (document.querySelector('.jf-custom-slideshow')) return;
-
-        const activePage = document.querySelector('.page.is-active, .homePage');
-        if (!activePage || (!activePage.classList.contains('homePage') && !activePage.id.includes('home'))) return;
-
-        const insertTarget = activePage.querySelector('.section, .padded-left, .emby-scroller');
-        if (!insertTarget) {
-            console.log("Could not find a place to inject the slider.");
-            return;
-        }
 
         const container = document.createElement('div');
-        container.className = 'jf-custom-slideshow';
+        container.id = SLIDESHOW_ID;
 
         items.forEach((item, index) => {
             const slide = document.createElement('div');
@@ -104,30 +100,69 @@
 
         let currentIdx = 0;
         const slides = container.querySelectorAll('.jf-slide');
-        setInterval(() => {
-            if(!document.querySelector('.jf-custom-slideshow')) return;
+        
+        if (slideshowInterval) clearInterval(slideshowInterval);
+        
+        slideshowInterval = setInterval(() => {
+            if(!document.getElementById(SLIDESHOW_ID)) {
+                clearInterval(slideshowInterval);
+                return;
+            }
             slides[currentIdx].classList.remove('active');
             currentIdx = (currentIdx + 1) % slides.length;
             slides[currentIdx].classList.add('active');
         }, 6000);
-    };
-
-    const init = async () => {
-        if (window.location.hash.includes('home') || window.location.hash === '#!' || window.location.hash === '') {
-            injectCSS();
-            const movies = await fetchRecommendedMovies();
-            renderSlideshow(movies);
-        }
-    };
-
-    window.addEventListener('hashchange', () => {
-        setTimeout(init, 500);
-    });
-    
-    if (document.readyState === 'complete' || document.readyState === 'interactive') {
-        init();
-    } else {
-        document.addEventListener('DOMContentLoaded', () => setTimeout(init, 1000));
     }
 
+    async function triggerBuild(insertTarget) {
+        if (isFetching || document.getElementById(SLIDESHOW_ID)) return;
+        
+        if (typeof ApiClient === 'undefined' || !ApiClient.getCurrentUserId()) return;
+
+        isFetching = true;
+        injectCSS();
+        
+        const movies = await fetchRecommendedMovies();
+        
+        if (movies.length > 0 && document.body.contains(insertTarget)) {
+            renderSlideshow(movies, insertTarget);
+        }
+        
+        isFetching = false;
+    }
+
+    function init() {
+        if (!document.body) return;
+
+        const isHomePageURL = window.location.hash === '' || window.location.hash === '#!' || window.location.hash.includes('home');
+        const activePage = document.querySelector('.page.is-active, .homePage');
+        
+        const isActuallyHomePage = isHomePageURL && activePage && (activePage.classList.contains('homePage') || activePage.id.includes('home'));
+
+        if (!isActuallyHomePage) {
+            if (slideshowInterval) {
+                clearInterval(slideshowInterval);
+                slideshowInterval = null;
+            }
+            return;
+        }
+
+        const insertTarget = activePage.querySelector('.section, .padded-left, .emby-scroller');
+        
+        if (insertTarget && !document.getElementById(SLIDESHOW_ID)) {
+            triggerBuild(insertTarget);
+        }
+    }
+
+    const start = () => {
+        const observer = new MutationObserver(() => init());
+        observer.observe(document.body, { childList: true, subtree: true });
+        init();
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', start);
+    } else {
+        start();
+    }
 })();
