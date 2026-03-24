@@ -33,6 +33,7 @@
                 background-position: center 20%;
                 display: flex;
                 align-items: flex-end;
+                cursor: pointer; /* Makes it obvious the slide is clickable */
             }
             .jf-slide.active { opacity: 1; }
             .jf-slide-overlay {
@@ -40,6 +41,10 @@
                 padding: 80px 40px 30px;
                 background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.5) 60%, transparent 100%);
                 color: #fff;
+                transition: padding-bottom 0.3s ease;
+            }
+            .jf-slide:hover .jf-slide-overlay {
+                padding-bottom: 40px; /* Slight hover effect */
             }
             .jf-slide-title { font-size: 2.8em; font-weight: 700; margin: 0 0 10px 0; text-shadow: 2px 2px 5px rgba(0,0,0,0.8); }
             .jf-slide-meta { font-size: 1.2em; color: #ddd; font-weight: 600; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); }
@@ -93,6 +98,12 @@
                     <div class="jf-slide-meta">${rating} <span>${year}</span></div>
                 </div>
             `;
+
+            slide.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.location.hash = `#!/details?id=${item.Id}`;
+            });
+
             container.appendChild(slide);
         });
 
