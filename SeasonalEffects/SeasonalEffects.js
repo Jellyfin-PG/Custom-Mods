@@ -38,8 +38,8 @@
                 left: 0;
                 width: 100vw;
                 height: 100vh;
-                pointer-events: none; /* CRITICAL: Lets you click through the weather */
-                z-index: 100; /* High enough to overlay backgrounds, low enough to not block menus */
+                pointer-events: none;
+                z-index: 100;
                 overflow: hidden;
             }
             .jf-particle {
@@ -68,8 +68,8 @@
         } else if (season === 'spring') {
             css += `
                 .jf-particle {
-                    background: #ffb7c5; /* Sakura pink */
-                    border-radius: 15px 0 15px 0; /* Petal shape */
+                    background: #ffb7c5;
+                    border-radius: 15px 0 15px 0;
                     opacity: 0.7;
                     animation: jf-drift linear infinite;
                 }
