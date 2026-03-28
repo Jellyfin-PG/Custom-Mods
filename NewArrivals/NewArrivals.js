@@ -3,7 +3,6 @@
     const DAYS_CONSIDERED_NEW = 14; 
     
     const ITEMS_TO_CHECK = 200; 
-    // ==========================================
 
     const STYLE_ID = 'jf-new-arrival-style';
     let newArrivalIds = new Set();
@@ -20,10 +19,10 @@
                 top: -6px;
                 left: -6px;
                 z-index: 10;
-                pointer-events: none; /* Let clicks pass through to the card */
+                pointer-events: none;
             }
             .jf-badge-new {
-                background: linear-gradient(135deg, #10b981, #059669); /* Vibrant Emerald Green */
+                background: linear-gradient(135deg, #10b981, #059669);
                 color: #fff;
                 padding: 4px 10px;
                 border-radius: 6px;
@@ -33,7 +32,6 @@
                 letter-spacing: 1px;
                 box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4);
                 border: 1px solid rgba(255, 255, 255, 0.2);
-                /* Subtle pulse animation to draw the eye */
                 animation: jf-pulse 2s infinite; 
             }
             
