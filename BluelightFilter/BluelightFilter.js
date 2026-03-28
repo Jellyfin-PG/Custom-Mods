@@ -9,6 +9,20 @@
 
     let isNightMode = localStorage.getItem(STORAGE_KEY) === 'true';
 
+    function updateFilterVisibility() {
+        const filter = document.getElementById(FILTER_ID);
+        if (!filter) return;
+        
+        const hasVideo = document.querySelector('video');
+        const hasFsBtn = document.querySelector('.btnFullscreen');
+        
+        if (isNightMode && hasVideo && hasFsBtn) {
+            filter.classList.add('active');
+        } else {
+            filter.classList.remove('active');
+        }
+    }
+
     function injectFilter() {
         if (document.getElementById(FILTER_ID)) return;
 
@@ -21,12 +35,9 @@
                 width: 100vw; 
                 height: 100vh;
                 background-color: ${FILTER_COLOR};
-                
                 mix-blend-mode: multiply; 
-                
                 pointer-events: none;
                 z-index: 99998;
-                
                 opacity: 0;
                 transition: opacity 0.8s ease-in-out;
                 display: none;
@@ -52,19 +63,16 @@
 
         const filter = document.createElement('div');
         filter.id = FILTER_ID;
-        if (isNightMode) filter.classList.add('active');
         document.body.appendChild(filter);
+        
+        updateFilterVisibility();
     }
 
     function toggleNightMode(btn) {
         isNightMode = !isNightMode;
         localStorage.setItem(STORAGE_KEY, isNightMode);
 
-        const filter = document.getElementById(FILTER_ID);
-        if (filter) {
-            if (isNightMode) filter.classList.add('active');
-            else filter.classList.remove('active');
-        }
+        updateFilterVisibility();
 
         if (btn) {
             if (isNightMode) btn.classList.add('active-btn');
@@ -115,6 +123,8 @@
             const btn = document.getElementById(BTN_ID);
             if (btn) btn.remove();
         }
+        
+        updateFilterVisibility(); 
     }
 
     function init() {
