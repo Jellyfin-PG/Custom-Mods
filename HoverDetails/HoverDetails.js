@@ -25,7 +25,7 @@
                 box-shadow: 0 12px 40px rgba(0,0,0,0.8);
                 border: 1px solid rgba(255,255,255,0.15);
                 backdrop-filter: blur(12px);
-                pointer-events: none; /* Crucial: stops the tooltip from interfering with clicks */
+                pointer-events: none;
                 opacity: 0;
                 transition: opacity 0.2s ease-in-out;
                 display: none;
@@ -44,7 +44,7 @@
             }
             .jf-tooltip-meta {
                 font-size: 0.8em;
-                color: #10b981; /* Emerald green to match your New Arrival badges */
+                color: #10b981;
                 margin-bottom: 10px;
                 font-weight: 700;
                 text-transform: uppercase;
@@ -54,7 +54,6 @@
                 font-size: 0.85em;
                 line-height: 1.5;
                 color: #d1d5db;
-                /* Truncate text after 6 lines so the box doesn't get too massive */
                 display: -webkit-box;
                 -webkit-line-clamp: 6;
                 -webkit-box-orient: vertical;
