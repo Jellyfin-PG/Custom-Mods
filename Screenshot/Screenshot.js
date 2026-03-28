@@ -1,0 +1,172 @@
+(function () {
+    'use strict';
+
+    const AUTO_SCREENSHOT_INTERVAL_MS = 1000;
+    let autoMode = false;
+    let autoIntervalId = null;
+    let lastVideoRef = null;
+
+    const ensureStyles = () => {
+        if (document.getElementById('auto-screenshot-style')) return;
+        const style = document.createElement('style');
+        style.id = 'auto-screenshot-style';
+        style.textContent = `
+            @keyframes autoscreenshot-wiggle {
+                0%, 100% { transform: rotate(0deg); }
+                20% { transform: rotate(-6deg); }
+                40% { transform: rotate(6deg); }
+                60% { transform: rotate(-4deg); }
+                80% { transform: rotate(4deg); }
+            }
+            .auto-screenshot-active {
+                animation: autoscreenshot-wiggle 1s ease-in-out infinite;
+                color: #10b981 !important;
+            }
+        `;
+        document.head.appendChild(style);
+    };
+
+    const sanitize = (str) => {
+        return str.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim();
+    };
+
+    const getVideoLabel = (video) => {
+        const pageTitleEl = document.querySelector('h3.pageTitle') || Array.from(document.querySelectorAll('[aria-hidden="true"]')).find(el => el.className.toLowerCase().includes('pagetitle'));
+        
+        if (!pageTitleEl) return '';
+
+        let text = pageTitleEl.textContent.trim();
+        const episodeMatch = text.match(/^(.*?)-\s*S(\d+)[\:-]?E(\d+)\s*-\s*(.*?)(?:\s*\(\d{4}\))?$/i);
+
+        if (episodeMatch) {
+            return ` - ${episodeMatch[1].trim().replace(/\s*:\s*/g, ' - ')} - S${episodeMatch[2].padStart(2, '0')}E${episodeMatch[3].padStart(2, '0')} - ${episodeMatch[4].trim()}`;
+        }
+
+        return ` - ${sanitize(text.replace(/\s*\(\d{4}\)/, '').replace(/\s*:\s*/g, ' - '))}`;
+    };
+
+    const takeScreenshot = () => {
+        const video = document.querySelector('video');
+        if (!video || video.videoWidth === 0) return;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0);
+
+        const now = new Date();
+        const label = getVideoLabel(video);
+        const link = document.createElement('a');
+
+        link.download = `Screenshot ${now.toISOString().slice(0, 10)} ${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}${label}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    };
+
+    const stopAutoMode = () => {
+        autoMode = false;
+        clearInterval(autoIntervalId);
+        autoIntervalId = null;
+        const icon = document.querySelector('#jf-screenshot-btn .material-icons');
+        if (icon) icon.classList.remove('auto-screenshot-active');
+    };
+
+    const startAutoMode = () => {
+        autoMode = true;
+        takeScreenshot();
+        autoIntervalId = setInterval(takeScreenshot, AUTO_SCREENSHOT_INTERVAL_MS);
+        const icon = document.querySelector('#jf-screenshot-btn .material-icons');
+        if (icon) icon.classList.add('auto-screenshot-active');
+    };
+
+    const toggleAutoMode = () => {
+        if (autoMode) {
+            stopAutoMode();
+        } else {
+            startAutoMode();
+        }
+    };
+
+    const injectButton = () => {
+        if (document.getElementById('jf-screenshot-btn')) return;
+
+        const fullscreenBtn = document.querySelector('.btnFullscreen');
+        if (!fullscreenBtn) return;
+
+        ensureStyles();
+
+        const btn = document.createElement('button');
+        btn.id = 'jf-screenshot-btn';
+        btn.setAttribute('is', 'paper-icon-button-light');
+        btn.className = 'autoSize paper-icon-button-light focuscontainer-x itemAction';
+        btn.title = 'Take Screenshot (Hold for burst, Double-click for auto)';
+
+        const icon = document.createElement('span');
+        icon.className = 'material-icons largePaperIconButton';
+        icon.setAttribute('aria-hidden', 'true');
+        icon.textContent = 'photo_camera';
+
+        btn.appendChild(icon);
+
+        let holdIntervalId = null;
+        let clickCount = 0;
+        let clickTimer = null;
+
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            clickCount++;
+
+            if (clickTimer) clearTimeout(clickTimer);
+
+            clickTimer = setTimeout(() => {
+                if (clickCount >= 2) toggleAutoMode();
+                clickCount = 0;
+            }, 250);
+        });
+
+        btn.addEventListener('mousedown', () => {
+            if (autoMode || holdIntervalId) return;
+            takeScreenshot();
+            holdIntervalId = setInterval(takeScreenshot, 200);
+        });
+
+        const stopHold = () => {
+            if (holdIntervalId) clearInterval(holdIntervalId);
+            holdIntervalId = null;
+        };
+
+        btn.addEventListener('mouseup', stopHold);
+        btn.addEventListener('mouseleave', stopHold);
+
+        fullscreenBtn.parentNode.insertBefore(btn, fullscreenBtn);
+    };
+
+    const checkPlayerState = () => {
+        const video = document.querySelector('video');
+
+        if (video !== lastVideoRef) {
+            lastVideoRef = video;
+            if (autoMode) stopAutoMode();
+        }
+
+        if (video && document.querySelector('.btnFullscreen')) {
+            injectButton();
+        } else if (!video) {
+            const btn = document.getElementById('jf-screenshot-btn');
+            if (btn) btn.remove();
+        }
+    };
+
+    const observer = new MutationObserver(checkPlayerState);
+
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        checkPlayerState();
+        observer.observe(document.body, { childList: true, subtree: true });
+    } else {
+        window.addEventListener('DOMContentLoaded', () => {
+            checkPlayerState();
+            observer.observe(document.body, { childList: true, subtree: true });
+        });
+    }
+})();
