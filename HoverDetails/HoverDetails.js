@@ -46,7 +46,7 @@
             item.ProductionYear || '',
             item.CommunityRating ? `⭐ ${item.CommunityRating.toFixed(1)}` : '',
             item.Genres?.slice(0, 3).join(', ') || ''
-        ].filter(Boolean).join(' <span style="color:#666">|</span> ');
+        ].filter(Boolean).join(' <span style="color:#666"> | </span> ');
 
         t.innerHTML = `<div class="jf-tooltip-title">${item.Name}</div><div class="jf-tooltip-meta">${meta}</div><div class="jf-tooltip-overview">${item.Overview || 'No synopsis available.'}</div>`;
         positionTooltip(t);
