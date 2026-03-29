@@ -3,11 +3,12 @@
 
     const OSD_GAP = 25, EDGE_GAP = 40;
     let activeItem = null, trivia = [], idx = 0, visible = false, rafId = null, teardown = false;
+    let _overlay = null, _text = null, _label = null;
 
     const $ = id => document.getElementById(id);
     const qs = sel => document.querySelector(sel);
 
-    const css = `#jf-insight-overlay{position:fixed;left:50%;transform:translateX(-50%) translateY(20px);width:90%;max-width:700px;background:rgba(10,10,10,.5);backdrop-filter:blur(25px) saturate(1.2);-webkit-backdrop-filter:blur(25px) saturate(1.2);border:1px solid rgba(255,255,255,.1);border-radius:16px;z-index:100001;display:flex;flex-direction:column;padding:25px;opacity:0;pointer-events:none;transition:opacity .5s cubic-bezier(.16,1,.3,1),transform .5s cubic-bezier(.16,1,.3,1),bottom .4s cubic-bezier(.16,1,.3,1);color:#fff;font-family:'Instrument Serif',serif;box-shadow:0 20px 50px rgba(0,0,0,.5);bottom:${EDGE_GAP}px}#jf-insight-overlay.active{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}.insight-content{text-align:left;width:100%}.insight-header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.insight-label{font-family:'Geist Mono',monospace;font-size:8px;letter-spacing:.4em;text-transform:uppercase;color:#00a4dc;opacity:.8}.insight-text{font-size:clamp(18px,2.5vw,22px);line-height:1.4;margin-bottom:20px;font-weight:400;letter-spacing:-.01em;opacity:0;transition:opacity .3s ease-out}.insight-footer{display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,.05);padding-top:15px}.insight-nav{font-family:'Geist Mono',monospace;font-size:9px;color:rgba(255,255,255,.3);cursor:pointer;transition:color .3s;text-transform:uppercase;letter-spacing:.15em}.insight-nav:hover{color:#fff}#jf-vision-trigger{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.1);border-radius:4px;margin:0 8px;padding:0 12px;height:32px;font-family:'Geist Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:all .2s ease;vertical-align:middle;color:#eee}#jf-vision-trigger:hover{background:rgba(255,255,255,.2);color:#00a4dc}#jf-vision-trigger.active-mode{background:rgba(0,164,220,.2);color:#00a4dc;border-color:rgba(0,164,220,.5);box-shadow:0 0 15px rgba(0,164,220,.1)}#jf-vision-trigger .material-icons{font-size:14px}`;
+    const css = `#jf-insight-overlay{position:fixed;left:50%;transform:translateX(-50%) translateY(20px);width:90%;max-width:700px;background:rgba(10,10,10,.5);backdrop-filter:blur(25px) saturate(1.2);-webkit-backdrop-filter:blur(25px) saturate(1.2);border:1px solid rgba(255,255,255,.1);border-radius:16px;z-index:100001;display:flex;flex-direction:column;padding:25px;opacity:0;pointer-events:none;transition:opacity .5s cubic-bezier(.16,1,.3,1),transform .5s cubic-bezier(.16,1,.3,1),bottom .4s cubic-bezier(.16,1,.3,1);color:#fff;font-family:'Instrument Serif',serif;box-shadow:0 20px 50px rgba(0,0,0,.5);bottom:${EDGE_GAP}px}#jf-insight-overlay.active{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0)}.insight-content{text-align:left;width:100%}.insight-header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.insight-label{font-family:'Geist Mono',monospace;font-size:8px;letter-spacing:.4em;text-transform:uppercase;color:#00a4dc;opacity:.8}.insight-text{font-size:clamp(18px,2.5vw,22px);line-height:1.4;margin-bottom:20px;font-weight:400;letter-spacing:-.01em;opacity:0;transition:opacity .3s ease-out}.insight-footer{display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,.05);padding-top:15px}.insight-nav{font-family:'Geist Mono',monospace;font-size:9px;color:rgba(255,255,255,.3);cursor:pointer;transition:color .3s;text-transform:uppercase;letter-spacing:.15em}.insight-nav:hover{color:#fff}#jf-vision-trigger{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.1);border-radius:4px;margin:0 8px;padding:0 12px;height:32px;font-family:'Geist Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:all .2s ease;vertical-align:middle;color:#eee}#jf-vision-trigger:hover{background:rgba(255,255,255,.2);color:#00a4dc}#jf-vision-trigger.active-mode{background:rgba(0,164,220,.2);color:#00a4dc;border-color:rgba(0,164,220,.5);box-shadow:0 0 15px rgba(0,164,220,.1)}#jf-vision-trigger .material-icons{font-size:14px}@media(max-width:600px){#jf-insight-overlay{width:85%;padding:16px;border-radius:12px}.insight-text{font-size:clamp(14px,3.5vw,17px);margin-bottom:14px}.insight-label{font-size:7px}.insight-nav{font-size:8px}.insight-footer{padding-top:10px}}`;
 
     const injectStyles = () => {
         if ($('jf-insight-styles')) return;
@@ -20,19 +21,18 @@
     const updatePosition = () => {
         if (!visible) return;
         try {
-            const overlay = $('jf-insight-overlay');
-            if (!overlay) return;
+            if (!_overlay) return;
             const osdControls = qs('.osdControls');
             const osdParent = osdControls?.closest('.videoOsdBottom');
             const osdActive = osdParent && !osdParent.classList.contains('hide') && !osdParent.classList.contains('videoOsdBottom-hidden');
-            overlay.style.bottom = (osdActive && qs('video'))
+            _overlay.style.bottom = (osdActive && qs('video'))
                 ? `${window.innerHeight - osdControls.getBoundingClientRect().top + OSD_GAP}px`
                 : `${EDGE_GAP}px`;
         } catch {}
         rafId = requestAnimationFrame(updatePosition);
     };
 
-    const fetchWithTimeout = async (url, timeout = 5000) => {
+    const fetchWithTimeout = async (url, timeout = 3000) => {
         const ctrl = new AbortController();
         const t = setTimeout(() => ctrl.abort(), timeout);
         try { const r = await fetch(url, { signal: ctrl.signal }); clearTimeout(t); return r; }
@@ -78,22 +78,33 @@
         setTimeout(() => { el[isText ? 'innerHTML' : 'textContent'] = content; el.style.transition = ''; }, 50);
     };
 
+    const createOverlay = () => {
+        if (_overlay) return;
+        const div = document.createElement('div');
+        div.id = 'jf-insight-overlay';
+        div.innerHTML = `<div class="insight-content"><div class="insight-header-row"><span class="insight-label"></span></div><div class="insight-text"></div><div class="insight-footer"><div class="insight-nav" id="jf-next-insight">Next Insight</div><div class="insight-nav" id="jf-close-insight">Dismiss</div></div></div>`;
+        document.body.appendChild(div);
+        _overlay = div;
+        _text = div.querySelector('.insight-text');
+        _label = div.querySelector('.insight-label');
+        $('jf-next-insight').addEventListener('click', e => { e.stopPropagation(); displayNext(); });
+        $('jf-close-insight').addEventListener('click', e => { e.stopPropagation(); toggleUI(true); });
+    };
+
     const toggleUI = (close = false) => {
         try {
             createOverlay();
-            const overlay = $('jf-insight-overlay'), btn = $('jf-vision-trigger');
-            if (!overlay) return;
+            const btn = $('jf-vision-trigger');
             const closing = close || visible;
-            overlay.classList.toggle('active', !closing);
+            _overlay.classList.toggle('active', !closing);
             btn?.classList.toggle('active-mode', !closing);
             visible = !closing;
-            const text = overlay.querySelector('.insight-text'), label = overlay.querySelector('.insight-label');
             if (closing) {
                 if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
-                fade(text, ''); fade(label, '');
+                fade(_text, ''); fade(_label, '');
             } else {
-                if (text) { text.style.opacity = 0; text.innerHTML = ''; }
-                if (label) { label.style.opacity = 0; label.textContent = ''; }
+                if (_text) { _text.style.opacity = 0; _text.innerHTML = ''; }
+                if (_label) { _label.style.opacity = 0; _label.textContent = ''; }
                 rafId = requestAnimationFrame(updatePosition);
                 displayNext();
             }
@@ -102,37 +113,24 @@
 
     const displayNext = () => {
         try {
-            const overlay = $('jf-insight-overlay');
-            if (!overlay) return;
-            const text = overlay.querySelector('.insight-text'), label = overlay.querySelector('.insight-label');
-            if (!text || !label) return;
+            if (!_overlay || !_text || !_label) return;
             if (!trivia.length) {
-                label.textContent = 'The Concept'; text.innerHTML = 'Gathering narratives...';
-                label.style.opacity = text.style.opacity = 1;
+                _label.textContent = 'The Concept'; _text.innerHTML = 'Gathering narratives...';
+                _label.style.opacity = _text.style.opacity = 1;
                 return;
             }
             idx = (idx + 1) % trivia.length;
             const e = trivia[idx];
-            text.style.transition = label.style.transition = 'none';
-            text.style.opacity = label.style.opacity = 0;
-            void text.offsetHeight;
+            _text.style.transition = _label.style.transition = 'none';
+            _text.style.opacity = _label.style.opacity = 0;
+            void _text.offsetHeight;
             setTimeout(() => {
-                text.style.transition = label.style.transition = '';
-                label.textContent = e.label || 'The Concept';
-                text.innerHTML = `"${e.text}"`;
-                text.style.opacity = label.style.opacity = 1;
+                _text.style.transition = _label.style.transition = '';
+                _label.textContent = e.label || 'The Concept';
+                _text.innerHTML = `"${e.text}"`;
+                _text.style.opacity = _label.style.opacity = 1;
             }, 50);
         } catch {}
-    };
-
-    const createOverlay = () => {
-        if ($('jf-insight-overlay')) return;
-        const div = document.createElement('div');
-        div.id = 'jf-insight-overlay';
-        div.innerHTML = `<div class="insight-content"><div class="insight-header-row"><span class="insight-label"></span></div><div class="insight-text"></div><div class="insight-footer"><div class="insight-nav" id="jf-next-insight">Next Insight</div><div class="insight-nav" id="jf-close-insight">Dismiss</div></div></div>`;
-        document.body.appendChild(div);
-        $('jf-next-insight').addEventListener('click', e => { e.stopPropagation(); displayNext(); });
-        $('jf-close-insight').addEventListener('click', e => { e.stopPropagation(); toggleUI(true); });
     };
 
     const isPlayerActive = () => {
@@ -146,7 +144,8 @@
             if (!isPlayerActive()) {
                 if (visible) toggleUI(true);
                 activeItem = null;
-                requestAnimationFrame(() => { const b = $('jf-vision-trigger'); if (b) b.style.display = 'none'; });
+                const b = $('jf-vision-trigger');
+                if (b) b.style.display = 'none';
                 teardown = true;
                 setTimeout(() => { teardown = false; }, 500);
                 return;
@@ -170,18 +169,19 @@
                 btn.classList.toggle('active-mode', visible);
             }
 
-            const match = window.location.hash.match(/[?&]id=([a-zA-Z0-9-]+)/i);
-            const newId = match?.[1];
+            const newId = window.location.hash.match(/[?&]id=([a-zA-Z0-9-]+)/i)?.[1];
             if (newId && newId !== activeItem) {
                 activeItem = newId;
                 trivia = []; idx = -1;
                 try {
+                    const timeout = new Promise(res => setTimeout(() => res([]), 8000));
                     const item = await ApiClient.getJSON(ApiClient.getUrl(`Users/${ApiClient.getCurrentUserId()}/Items/${activeItem}`));
-                    trivia = await fetchTrivia(item);
+                    trivia = await Promise.race([fetchTrivia(item), timeout]);
+                    if (!trivia.length) trivia = [{ label: "The Journey", text: "No specific insights gathered." }];
                     if (visible) displayNext();
                 } catch { activeItem = null; }
             }
-        } catch (err) { console.warn('[VISION] Sync suppressed:', err); }
+        } catch {}
     };
 
     injectStyles();
