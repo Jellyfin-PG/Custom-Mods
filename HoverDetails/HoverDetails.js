@@ -28,6 +28,9 @@
     };
 
     const hideTooltip = () => {
+        clearTimeout(hoverTimer);
+        currentCard = null;
+        hoverTimer = null;
         const t = $(TOOLTIP_ID);
         if (t) t.classList.remove('visible');
     };
@@ -89,14 +92,20 @@
                 clearTimeout(hoverTimer);
                 hideTooltip();
             });
+
+            card.addEventListener('click', hideTooltip);
         });
     };
 
-    const onNavigate = () => {
-        clearTimeout(hoverTimer);
-        currentCard = null;
-        hideTooltip();
-        processCards();
+    const patchHistory = () => {
+        ['pushState', 'replaceState'].forEach(method => {
+            const orig = history[method];
+            history[method] = function (...args) {
+                orig.apply(this, args);
+                hideTooltip();
+                processCards();
+            };
+        });
     };
 
     const observer = new MutationObserver(() => {
@@ -105,10 +114,11 @@
 
     const init = () => {
         injectCSS();
+        patchHistory();
         observer.observe(document.body, { childList: true, subtree: true });
         processCards();
-        window.addEventListener('hashchange', onNavigate);
-        window.addEventListener('popstate', onNavigate);
+        window.addEventListener('hashchange', hideTooltip);
+        window.addEventListener('popstate', hideTooltip);
     };
 
     document.readyState === 'loading'
