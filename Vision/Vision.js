@@ -47,7 +47,7 @@
         if (dir) out.push({ label: "The Vision", text: `Directed by the hand of ${dir}.` });
 
         item.People?.filter(p => p.Type === 'Actor').slice(0, 4).forEach(a => {
-            if (a.Name) out.push({ label: "The Cast", text: a.Role ? `Featuring ${a.Name} as ${a.Role}.` : `Starring ${a.Name}.` });
+            if (a.Name) out.push({ label: "The Cast", text: a.Role ? `Featuring ${a.Name.trim()} as ${a.Role.trim()}.` : `Starring ${a.Name.trim()}.` });
         });
 
         item.Taglines?.forEach(t => out.push({ label: "The Concept", text: t }));
