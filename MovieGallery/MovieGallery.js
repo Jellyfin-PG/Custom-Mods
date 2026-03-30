@@ -2,6 +2,8 @@
     'use strict';
 
     var galleryTimeout = parseInt("{{GALLERY_TIMEOUT}}") || 6000;
+    var showMovieInfo = "{{SHOW_MOVIE_INFO}}" !== "false";
+
     const STYLE_ID = 'jf-slideshow-styles';
     const SLIDESHOW_ID = 'jf-custom-slideshow';
     
@@ -16,12 +18,11 @@
         style.textContent = `
             #${SLIDESHOW_ID} {
                 position: relative;
-                width: calc(100% - 4%);
-                margin: 1em 2%;
+                margin: 20px 3.3%;
                 height: 450px;
-                border-radius: var(--rounding-lg, 12px);
+                border-radius: 14px;
                 overflow: hidden;
-                box-shadow: 0 10px 20px rgba(0,0,0,0.6);
+                box-shadow: 0 10px 30px rgba(0,0,0,0.4);
                 z-index: 100;
             }
             .jf-slide {
@@ -29,11 +30,8 @@
                 top: 0; left: 0;
                 width: 100%; height: 100%;
                 opacity: 0;
-                
-                /* THE FIX: Ignore clicks on invisible slides */
                 pointer-events: none; 
                 z-index: 1;
-                
                 transition: opacity 1.2s ease-in-out;
                 background-size: cover;
                 background-position: center 20%;
@@ -43,8 +41,6 @@
             }
             .jf-slide.active { 
                 opacity: 1; 
-                
-                /* THE FIX: Re-enable clicks for the visible slide */
                 pointer-events: auto; 
                 z-index: 10;
             }
@@ -61,6 +57,21 @@
             .jf-slide-title { font-size: 2.8em; font-weight: 700; margin: 0 0 10px 0; text-shadow: 2px 2px 5px rgba(0,0,0,0.8); }
             .jf-slide-meta { font-size: 1.2em; color: #ddd; font-weight: 600; text-shadow: 1px 1px 3px rgba(0,0,0,0.8); }
             .jf-rating { color: #facc15; margin-right: 15px; }
+
+            @media(max-width: 768px) {
+                #${SLIDESHOW_ID} {
+                    margin: 10px 2%;
+                    height: 300px;
+                }
+                .jf-slide-overlay {
+                    padding: 60px 20px 20px;
+                }
+                .jf-slide:hover .jf-slide-overlay {
+                    padding-bottom: 20px; /* Disable hover shift on mobile */
+                }
+                .jf-slide-title { font-size: 1.8em; }
+                .jf-slide-meta { font-size: 1em; }
+            }
         `;
         document.head.appendChild(style);
     }
@@ -101,15 +112,17 @@
             const imgUrl = ApiClient.getImageUrl(item.Id, { type: 'Backdrop', maxWidth: 1920 });
             slide.style.backgroundImage = `url('${imgUrl}')`;
             
-            const rating = item.CommunityRating ? `<span class="jf-rating">⭐ ${item.CommunityRating.toFixed(1)}</span>` : '';
-            const year = item.ProductionYear || '';
+            if (showMovieInfo) {
+                const rating = item.CommunityRating ? `<span class="jf-rating">⭐ ${item.CommunityRating.toFixed(1)}</span>` : '';
+                const year = item.ProductionYear || '';
 
-            slide.innerHTML = `
-                <div class="jf-slide-overlay">
-                    <h2 class="jf-slide-title">${item.Name}</h2>
-                    <div class="jf-slide-meta">${rating} <span>${year}</span></div>
-                </div>
-            `;
+                slide.innerHTML = `
+                    <div class="jf-slide-overlay">
+                        <h2 class="jf-slide-title">${item.Name}</h2>
+                        <div class="jf-slide-meta">${rating} <span>${year}</span></div>
+                    </div>
+                `;
+            }
 
             slide.addEventListener('click', (e) => {
                 e.preventDefault();
