@@ -1,12 +1,11 @@
 (function () {
     'use strict';
-  
-    const IS_NORTHERN_HEMISPHERE = true; 
-    
-    const PARTICLE_COUNT = 35; 
 
+    const IS_NORTHERN_HEMISPHERE = true;
+    const PARTICLE_COUNT = 35;
     const CONTAINER_ID = 'jf-seasonal-overlay';
     const STYLE_ID = 'jf-seasonal-style';
+    const VIDEO_ROUTE_KEYWORD = '/video';
 
     function getCurrentSeason() {
         const month = new Date().getMonth();
@@ -18,7 +17,7 @@
         else if ([8, 9, 10].includes(month)) season = 'autumn';
 
         if (!IS_NORTHERN_HEMISPHERE) {
-            const swap = { 'winter': 'summer', 'spring': 'autumn', 'summer': 'winter', 'autumn': 'spring' };
+            const swap = { winter: 'summer', spring: 'autumn', summer: 'winter', autumn: 'spring' };
             season = swap[season];
         }
 
@@ -30,7 +29,7 @@
 
         const style = document.createElement('style');
         style.id = STYLE_ID;
-        
+
         let css = `
             #${CONTAINER_ID} {
                 position: fixed;
@@ -41,11 +40,22 @@
                 pointer-events: none;
                 z-index: 100;
                 overflow: hidden;
+                transition: opacity 0.4s ease;
+            }
+            #${CONTAINER_ID}.jf-hidden {
+                display: none !important;
+                visibility: hidden !important;
+            }
+            body:has(#videoOsdPage:not(.hide)) #${CONTAINER_ID},
+            body:has(.htmlvideoplayer-container) #${CONTAINER_ID},
+            body:has(video) #${CONTAINER_ID} {
+                display: none !important;
             }
             .jf-particle {
                 position: absolute;
                 pointer-events: none;
                 user-select: none;
+                will-change: transform, opacity;
             }
         `;
 
@@ -157,14 +167,53 @@
         document.body.appendChild(container);
     }
 
+    function isVideoPlaybackActive() {
+        const hash = window.location.hash || '';
+        if (hash.toLowerCase().includes(VIDEO_ROUTE_KEYWORD)) return true;
+
+        const videoOsd = document.getElementById('videoOsdPage');
+        if (videoOsd && !videoOsd.classList.contains('hide')) return true;
+
+        const videoElement = document.querySelector('video');
+        if (videoElement && !videoElement.paused && videoElement.currentTime > 0) return true;
+
+        return false;
+    }
+
+    function syncOverlayVisibility() {
+        const container = document.getElementById(CONTAINER_ID);
+        if (!container) return;
+
+        if (isVideoPlaybackActive()) {
+            container.classList.add('jf-hidden');
+        } else {
+            container.classList.remove('jf-hidden');
+        }
+    }
+
+    function setupNavigationObservers() {
+        window.addEventListener('hashchange', syncOverlayVisibility);
+        window.addEventListener('popstate', syncOverlayVisibility);
+        document.addEventListener('viewshow', syncOverlayVisibility);
+        document.addEventListener('pageshow', syncOverlayVisibility);
+
+        const observer = new MutationObserver(() => syncOverlayVisibility());
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class', 'style']
+        });
+    }
+
     function init() {
         if (document.getElementById(CONTAINER_ID)) return;
-        
+
         const season = getCurrentSeason();
-        console.log(`Jellyfin Seasonal Styles: Initializing ${season} theme.`);
-        
         injectCSS(season);
         createParticles(season);
+        setupNavigationObservers();
+        syncOverlayVisibility();
     }
 
     if (document.readyState === 'loading') {
@@ -172,5 +221,4 @@
     } else {
         init();
     }
-
 })();
